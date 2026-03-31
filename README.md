@@ -26,9 +26,7 @@ UniswapPositionManager (Implementation)
 |---|---|
 | **UniswapPositionManager** | Implementation/logic contract. Handles deposits, WETH wrapping, and Uniswap V3 position minting. |
 | **UniswapPositionProxy** | Minimal ERC-1967 proxy. Delegates all calls to the implementation. Supports upgrades via `upgradeTo()`. |
-| **TestToken** | ERC20 test token (TKA) with 1M supply, used as Asset A for testing. |
-| **MockWETH** | Mock Wrapped Ether contract for testnet deployment. |
-| **MockPositionManager** | Mock Uniswap V3 NonfungiblePositionManager that simulates pool creation and position minting. |
+| **ERC20Mock** | Existing mintable ERC20 on zkSync Era Sepolia ([`0xFD1fBFf2E1bAa053C927dc513579a8B2727233D8`](https://sepolia.explorer.zksync.io/address/0xFD1fBFf2E1bAa053C927dc513579a8B2727233D8)), used as Asset A. |
 
 ### How It Works
 
@@ -47,17 +45,22 @@ UniswapPositionManager (Implementation)
 | Contract | Address |
 |---|---|
 | UniswapPositionManager (Implementation) | [`0x8CF72077B7DE3E1b2A77339461337C91aCBe0E20`](https://sepolia.explorer.zksync.io/address/0x8CF72077B7DE3E1b2A77339461337C91aCBe0E20) |
-| UniswapPositionProxy | [`0x9C8F3e02370b98F8Cfc44c59068BCE1347dfe280`](https://sepolia.explorer.zksync.io/address/0x9C8F3e02370b98F8Cfc44c59068BCE1347dfe280) |
-| TestToken (TKA) | [`0xFE8F85B89B23b3E7814F1b98f41491eA400c40FF`](https://sepolia.explorer.zksync.io/address/0xFE8F85B89B23b3E7814F1b98f41491eA400c40FF) |
-| MockWETH | [`0xE01Ebe5328916FEC7fDc7F2C95FC4A2e8D4590ad`](https://sepolia.explorer.zksync.io/address/0xE01Ebe5328916FEC7fDc7F2C95FC4A2e8D4590ad) |
-| MockPositionManager | [`0x9718b5C323A9b62B6F33f70AFBf391bCE6f0Bf17`](https://sepolia.explorer.zksync.io/address/0x9718b5C323A9b62B6F33f70AFBf391bCE6f0Bf17) |
+| UniswapPositionProxy | [`0x9C8F3e02370b98F8Cfc44c59068BCE1347dfe280`](https://sepolia.explorer.zksync.io/address/0xAe61b94560A3165529CfBbFe1df83b97Dd360120) |
+| ERC20Mock (Asset A) | [`0xFD1fBFf2E1bAa053C927dc513579a8B2727233D8`](https://sepolia.explorer.zksync.io/address/0xFD1fBFf2E1bAa053C927dc513579a8B2727233D8) |
+
+### Uniswap V3 Contracts on zkSync Era Sepolia
+
+| Contract | Address |
+|---|---|
+| NonfungiblePositionManager | [`0x0616e5762c1E7Dc3723c50663dF10a162D690a86`](https://sepolia.explorer.zksync.io/address/0x0616e5762c1E7Dc3723c50663dF10a162D690a86) |
+| WETH | [`0x53F7e72C7ac55b44c7cd73cC13D4EF4b121678e6`](https://sepolia.explorer.zksync.io/address/0x53F7e72C7ac55b44c7cd73cC13D4EF4b121678e6) |
 
 ## Transactions
 
 | Action | Transaction Hash |
 |---|---|
-| Token Approval | [`0x41f34f2ff75addd477b9eacea41af18ac4b4a0fba37c3edc7b4de151acef5d7f`](https://sepolia.explorer.zksync.io/tx/0x41f34f2ff75addd477b9eacea41af18ac4b4a0fba37c3edc7b4de151acef5d7f) |
-| Create Position | [`0x989099bd802a9627dd9b7d9b6eb79be34604b29a2f443384b9009b27c9cc021d`](https://sepolia.explorer.zksync.io/tx/0x989099bd802a9627dd9b7d9b6eb79be34604b29a2f443384b9009b27c9cc021d) |
+| Token Approval | [`0x41f34f2ff75addd477b9eacea41af18ac4b4a0fba37c3edc7b4de151acef5d7f`](https://sepolia.explorer.zksync.io/tx/0x34f769807a22fddb0ba5f116080ff5c583fcd66e2fb38360fe93a8433c15e5c8) |
+| Create Position | [`0x989099bd802a9627dd9b7d9b6eb79be34604b29a2f443384b9009b27c9cc021d`](https://sepolia.explorer.zksync.io/tx/0xf59a8bf63b68e8f1deb80d48fa8a066f1004649a326d97e70b821e893a255ce8) |
 
 ## Proxy Pattern Details
 
@@ -79,13 +82,10 @@ The contract uses the **ERC-1967 Transparent Proxy** pattern:
 
 ### 2. Deploy (in order)
 
-1. **TestToken** — no constructor args. Mints 1M TKA to deployer.
-2. **MockWETH** — no constructor args.
-3. **MockPositionManager** — no constructor args.
-4. **UniswapPositionManager** — no constructor args (implementation/logic contract).
-5. **UniswapPositionProxy** — constructor args:
+1. **UniswapPositionManager** — no constructor args (implementation/logic contract).
+2. **UniswapPositionProxy** — constructor args:
    - `impl`: UniswapPositionManager address
-   - `initData`: ABI-encoded `initialize(MockPositionManager, MockWETH, yourWallet)`
+   - `initData`: ABI-encoded `initialize(NonfungiblePositionManager, WETH, yourWallet)`
 
    Encode `initData` in the Remix console:
    ```javascript
@@ -97,29 +97,32 @@ The contract uses the **ERC-1967 Transparent Proxy** pattern:
            { type: 'address', name: '_weth' },
            { type: 'address', name: '_owner' }
        ]
-   }, ['MOCK_POSITION_MANAGER_ADDR', 'MOCK_WETH_ADDR', 'YOUR_WALLET_ADDR'])
+   }, ['0x0616e5762c1E7Dc3723c50663dF10a162D690a86', '0x53F7e72C7ac55b44c7cd73cC13D4EF4b121678e6', 'YOUR_WALLET_ADDR'])
    ```
 
 ### 3. Verify all contracts on the zkSync Sepolia explorer.
 
 ### 4. Create a Position
 
-1. On the explorer, go to **TestToken** → Write → call `approve(proxyAddress, 1000000000000000000)`.
-2. On the explorer, go to **UniswapPositionProxy** → Write as Proxy → call `createPosition`:
+1. On the explorer, go to **ERC20Mock** (`0xFD1fBFf2E1bAa053C927dc513579a8B2727233D8`) → Write → call `mint(yourWallet, amount)` to get tokens.
+2. Call `approve(proxyAddress, amount)` on ERC20Mock.
+3. On the explorer, go to **UniswapPositionProxy** → Write as Proxy → call `createPosition`:
    - `payableAmount`: `0.01` (ether)
-   - `tokenA`: TestToken address
-   - `amountA`: `1000000000000000000` (1 TKA)
+   - `tokenA`: `0xFD1fBFf2E1bAa053C927dc513579a8B2727233D8`
+   - `amountA`: `1000000000000000000` (1 token)
    - `fee`: `3000`
    - `tickLower`: `-887220`
    - `tickUpper`: `887220`
    - `sqrtPriceX96`: `79228162514264337593543950336`
 
-## Testnet Note
+## Uniswap V3 on zkSync Era Sepolia
 
-Uniswap V3 is not officially deployed on zkSync Era Sepolia Testnet. To demonstrate the full flow on testnet, mock contracts (MockWETH, MockPositionManager) were deployed to simulate the Uniswap V3 NonfungiblePositionManager behavior. The core contract logic (`UniswapPositionManager` + `UniswapPositionProxy`) is production-ready and works with real Uniswap V3 deployments on zkSync Era Mainnet by passing the real addresses during initialization:
+Uniswap V3 is deployed on zkSync Era Sepolia Testnet. The proxy should be initialized with the real Uniswap V3 contract addresses:
 
-- NonfungiblePositionManager: `0x0616e5762c1E7Dc3723c50663dF10a162D690a86`
-- WETH: `0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91`
+- **NonfungiblePositionManager**: [`0x0616e5762c1E7Dc3723c50663dF10a162D690a86`](https://sepolia.explorer.zksync.io/address/0x0616e5762c1E7Dc3723c50663dF10a162D690a86)
+- **WETH**: [`0x53F7e72C7ac55b44c7cd73cC13D4EF4b121678e6`](https://sepolia.explorer.zksync.io/address/0x53F7e72C7ac55b44c7cd73cC13D4EF4b121678e6)
+
+No mock contracts are needed — the real Uniswap V3 contracts are used directly.
 
 ## Compilation Settings
 
